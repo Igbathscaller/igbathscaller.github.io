@@ -84,3 +84,10 @@ button {
 button:hover {
   background: #253494;
 }
+
+.tierlist-container { max-width: 600px; margin: 40px auto; }
+.image-selection { display: flex; gap: 10px; margin-bottom: 20px; }
+.tier-img { width: 80px; height: 80px; border: 2px solid #aaa; border-radius: 6px; cursor: grab; background: #eee; }
+.tiers { display: flex; flex-direction: column; gap: 10px; }
+.tier-row { min-height: 100px; background: #f3f3f3; border: 2px solid #666; border-radius: 8px; padding: 8px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+.tier-row.drag-over { background: #d1ffd1; }
