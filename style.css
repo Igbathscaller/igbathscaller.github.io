@@ -91,3 +91,36 @@ button:hover {
 .tiers { display: flex; flex-direction: column; gap: 10px; }
 .tier-row { min-height: 100px; background: #f3f3f3; border: 2px solid #666; border-radius: 8px; padding: 8px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
 .tier-row.drag-over { background: #d1ffd1; }
+
+.tier-row {
+  min-height: 100px;
+  background: #f3f3f3;
+  border: 2px solid #666;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.tier-row.placeholder-above::before,
+.tier-row.placeholder-below::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: #d1ffd1;
+  z-index: 1;
+}
+
+.tier-row.placeholder-above::before {
+  top: -6px;
+}
+
+.tier-row.placeholder-below::after {
+  bottom: -6px;
+}
