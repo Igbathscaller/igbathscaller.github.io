@@ -1,5 +1,5 @@
 let draggedImg = null;
-let placeholderPosition = null; // "above" or "below"
+let placeholderPosition = null; // "above", "below", or null
 
 function addDragEvents(img) {
   img.addEventListener('dragstart', function (e) {
@@ -16,6 +16,9 @@ function addDragEvents(img) {
 function clearPlaceholders() {
   document.querySelectorAll('.tier-row').forEach(row => {
     row.classList.remove('placeholder-above', 'placeholder-below');
+    row.querySelectorAll('.tier-img').forEach(img => {
+      img.classList.remove('insert-left', 'insert-right', 'highlight-pair');
+    });
   });
 }
 
@@ -30,19 +33,75 @@ function createTierRow() {
 }
 
 function addTierRowEvents(row) {
-  // Drag over for above/below detection
   row.addEventListener('dragover', function (e) {
     e.preventDefault();
-    const rect = this.getBoundingClientRect();
-    const offset = e.clientY - rect.top;
     clearPlaceholders();
-    if (offset < rect.height / 2) {
+
+    const rect = this.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const aboveThreshold = -20; // 20px above the box
+    const belowThreshold = rect.height + 20; // 20px below the box
+
+    placeholderPosition = null;
+    row._insertBeforeImg = null;
+    row._highlightPair = null;
+
+    if (offsetY < 20 && offsetY >= aboveThreshold) {
       this.classList.add('placeholder-above');
       placeholderPosition = 'above';
-    } else {
+      return;
+    } else if (offsetY > rect.height - 20 && offsetY <= belowThreshold) {
       this.classList.add('placeholder-below');
       placeholderPosition = 'below';
+      return;
     }
+
+    // In-row logic: find where between images
+    const images = Array.from(this.querySelectorAll('.tier-img'));
+    const range = 40; // px, controls how close to edge or between
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      const imgRect = img.getBoundingClientRect();
+      const mid = imgRect.left + imgRect.width / 2;
+
+      // On left edge of first image
+      if (i === 0 && e.clientX < imgRect.left + range) {
+        img.classList.add('insert-left');
+        row._insertBeforeImg = img;
+        break;
+      }
+      // On right edge of last image
+      if (i === images.length - 1 && e.clientX > imgRect.right - range) {
+        img.classList.add('insert-right');
+        row._insertBeforeImg = img.nextSibling;
+        break;
+      }
+      // Between two images
+      if (i < images.length - 1) {
+        const nextImg = images[i + 1];
+        const nextRect = nextImg.getBoundingClientRect();
+        if (e.clientX > imgRect.right - range && e.clientX < nextRect.left + range) {
+          img.classList.add('highlight-pair');
+          nextImg.classList.add('highlight-pair');
+          row._insertBeforeImg = nextImg;
+          row._highlightPair = [img, nextImg];
+          break;
+        }
+      }
+      // On left/right half of an image
+      if (e.clientX >= imgRect.left && e.clientX <= imgRect.right) {
+        if (e.clientX < mid) {
+          img.classList.add('insert-left');
+          row._insertBeforeImg = img;
+        } else {
+          img.classList.add('insert-right');
+          row._insertBeforeImg = img.nextSibling;
+        }
+        break;
+      }
+    }
+    // If not over any image, will append to end
   });
 
   row.addEventListener('dragleave', function (e) {
@@ -54,15 +113,13 @@ function addTierRowEvents(row) {
     clearPlaceholders();
     if (!draggedImg) return;
 
-    // Insert image above or below the current tier
     const parent = this.parentNode;
+
     if (placeholderPosition === 'above') {
-      // Insert new tier above
       const newTier = createTierRow();
       parent.insertBefore(newTier, this);
       newTier.appendChild(draggedImg);
     } else if (placeholderPosition === 'below') {
-      // Insert new tier below
       const newTier = createTierRow();
       if (this.nextSibling) {
         parent.insertBefore(newTier, this.nextSibling);
@@ -70,32 +127,31 @@ function addTierRowEvents(row) {
         parent.appendChild(newTier);
       }
       newTier.appendChild(draggedImg);
+    } else if (this._insertBeforeImg) {
+      this.insertBefore(draggedImg, this._insertBeforeImg);
+    } else {
+      this.appendChild(draggedImg);
     }
-    // After dropping, always ensure there's at least one empty tier at the bottom
-    ensureEmptyTierAtEnd();
+    this._insertBeforeImg = null;
+    this._highlightPair = null;
     removeEmptyTiers();
+    placeholderPosition = null;
   });
-}
-
-function ensureEmptyTierAtEnd() {
-  const tiers = document.querySelectorAll('.tier-row');
-  const lastTier = tiers[tiers.length - 1];
-  if (lastTier.children.length > 0) {
-    const newTier = createTierRow();
-    lastTier.parentNode.appendChild(newTier);
-  }
 }
 
 function removeEmptyTiers() {
   const tiers = document.querySelectorAll('.tier-row');
-  // Keep at least one tier at the end
+  // Remove all empty tiers except the last one if *all* are empty
+  let nonEmptyCount = 0;
+  tiers.forEach(tier => {
+    if (tier.children.length > 0) nonEmptyCount++;
+  });
   tiers.forEach((tier, idx) => {
-    if (tier.children.length === 0 && idx < tiers.length - 1) {
+    if (tier.children.length === 0 && (nonEmptyCount > 0 || idx < tiers.length - 1)) {
       tier.parentNode.removeChild(tier);
     }
   });
 }
-
 
 // Initial setup
 document.querySelectorAll('.tier-img').forEach(addDragEvents);
